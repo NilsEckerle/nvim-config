@@ -1,0 +1,67 @@
+[submodule "nvim/pack/plugins/start/cmp-buffer"]
+	path = nvim/pack/plugins/start/cmp-buffer
+	url = git@github.com:hrsh7th/cmp-buffer
+[submodule "nvim/pack/plugins/start/cmp-nvim-lsp"]
+	path = nvim/pack/plugins/start/cmp-nvim-lsp
+	url = git@github.com:hrsh7th/cmp-nvim-lsp
+[submodule "nvim/pack/plugins/start/cmp-path"]
+	path = nvim/pack/plugins/start/cmp-path
+	url = git@github.com:hrsh7th/cmp-path
+[submodule "nvim/pack/plugins/start/gruvbox.nvim"]
+	path = nvim/pack/plugins/start/gruvbox.nvim
+	url = git@github.com:ellisonleao/gruvbox.nvim
+[submodule "nvim/pack/plugins/start/harpoon"]
+	branch = harpoon2
+	path = nvim/pack/plugins/start/harpoon
+	url = git@github.com:ThePrimeagen/harpoon
+[submodule "nvim/pack/plugins/start/nvim-cmp"]
+	path = nvim/pack/plugins/start/nvim-cmp
+	url = git@github.com:hrsh7th/nvim-cmp
+[submodule "nvim/pack/plugins/start/nvim-treesitter"]
+	path = nvim/pack/plugins/start/nvim-treesitter
+	url = git@github.com:nvim-treesitter/nvim-treesitter
+[submodule "nvim/pack/plugins/start/oil.nvim"]
+	path = nvim/pack/plugins/start/oil.nvim
+	url = git@github.com:stevearc/oil.nvim
+[submodule "nvim/pack/plugins/start/plenary.nvim"]
+	path = nvim/pack/plugins/start/plenary.nvim
+	url = git@github.com:nvim-lua/plenary.nvim
+[submodule "nvim/pack/plugins/start/telescope.nvim"]
+	path = nvim/pack/plugins/start/telescope.nvim
+	url = git@github.com:nvim-telescope/telescope.nvim
+[submodule "grammars/python"]
+	path = grammars/python
+	url = git@github.com:tree-sitter/tree-sitter-python
+[submodule "grammars/c"]
+	path = grammars/c
+	url = git@github.com:tree-sitter/tree-sitter-c
+[submodule "grammars/cpp"]
+	path = grammars/cpp
+	url = git@github.com:tree-sitter/tree-sitter-cpp
+[submodule "grammars/bash"]
+	path = grammars/bash
+	url = git@github.com:tree-sitter/tree-sitter-bash
+[submodule "neovim"]
+	path = neovim
+	url = git@github.com:neovim/neovim.git
+[submodule "grammars/css"]
+	path = grammars/css
+	url = git@github.com:tree-sitter/tree-sitter-css
+[submodule "grammars/html"]
+	path = grammars/html
+	url = git@github.com:tree-sitter/tree-sitter-html
+[submodule "grammars/lua"]
+	path = grammars/lua
+	url = git@github.com:MunifTanjim/tree-sitter-lua
+[submodule "nvim/pack/plugins/start/LuaSnip"]
+	path = nvim/pack/plugins/start/LuaSnip
+	url = git@github.com:L3MON4D3/LuaSnip
+[submodule "nvim/pack/plugins/start/friendly-snippets"]
+	path = nvim/pack/plugins/start/friendly-snippets
+	url = git@github.com:rafamadriz/friendly-snippets
+[submodule "nvim/pack/plugins/start/cmp_luasnip"]
+	path = nvim/pack/plugins/start/cmp_luasnip
+	url = git@github.com:saadparwaiz1/cmp_luasnip
+[submodule "nvim/pack/plugins/start/which-key.nvim"]
+	path = nvim/pack/plugins/start/which-key.nvim
+	url = https://github.com/folke/which-key.nvim
