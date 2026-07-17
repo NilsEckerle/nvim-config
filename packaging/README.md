@@ -77,6 +77,14 @@ on the target. (You may see a harmless `OmniSharp not found` line — ignore it.
 - LaTeX: `sudo apt install texlab texlive-latex-extra`
 - C# (omnisharp/csharpier) and R (r-languageserver/styler): dropped entirely.
 
+## Licenses
+
+The vendored binaries and the tools pulled in at build time keep their own
+licenses — this repo's top-level MIT license covers only the config and scripts.
+Third-party license texts live in `packaging/vendor/licenses/` and are copied
+into the installed bundle at `/opt/nvim-bundle/licenses/`. See
+`vendor/licenses/README.md` for the component-by-component breakdown.
+
 ## Target compatibility: Debian 13+ only
 
 The build uses Debian **trixie** because the `latex` treesitter grammar requires
