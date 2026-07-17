@@ -1,0 +1,2 @@
+# Keep this dir tracked but ignore nothing here — the vendored binaries are
+# meant to be committed. (This file just guarantees the dir exists in git.)

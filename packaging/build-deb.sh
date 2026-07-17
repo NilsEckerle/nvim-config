@@ -2,6 +2,11 @@
 # Builds nvim-bundle_<version>_amd64.deb.
 # Runs INSIDE the Debian build container (packaging/dockerfile.build).
 # Do not run this directly on the Arch host.
+#
+# Tool sources (no fragile "latest" downloads):
+#   apt              : clangd, clang-format, gopls   (installed in the Dockerfile)
+#   vendored (repo)  : neovim, node, lua-language-server, neocmakelsp  (packaging/vendor/)
+#   npm, pinned      : pyright, tailwindcss-language-server
 set -euo pipefail
 
 PKG_NAME=nvim-bundle
@@ -9,7 +14,12 @@ VERSION="${VERSION:-1.0.0}"
 ARCH=amd64
 NODE_VERSION="${NODE_VERSION:-22.14.0}"
 
+# Pinned npm versions (bump deliberately; these are exact, not ranges).
+PYRIGHT_VERSION="${PYRIGHT_VERSION:-1.1.403}"
+TAILWIND_LS_VERSION="${TAILWIND_LS_VERSION:-0.14.25}"
+
 SRC=/src                       # nvim config repo (copied into the image)
+VENDOR="$SRC/packaging/vendor"
 STAGE=/build/stage             # filesystem root of the .deb
 OPT="$STAGE/opt/$PKG_NAME"
 TOOLS="$OPT/tools"
@@ -17,61 +27,62 @@ DIST=/dist
 
 mkdir -p "$OPT"/{nvim,config,data} "$TOOLS"/bin "$STAGE"/usr/bin "$STAGE"/DEBIAN "$DIST"
 
-log() { printf '\n==> %s\n' "$*"; }
+log()  { printf '\n==> %s\n' "$*"; }
+need() { [ -e "$1" ] || { echo "ERROR: missing vendored file: $1" >&2
+         echo "See packaging/vendor/README.md for what to put there." >&2; exit 1; }; }
 
-# $1 = owner/repo, $2 = grep -E pattern matching the wanted asset URL
-gh_latest_asset() {
-  curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
-    | grep -oE '"browser_download_url": *"[^"]+"' \
-    | cut -d'"' -f4 | grep -E "$2" | head -n1
-}
+########################### 0. sanity: vendored files ################
+need "$VENDOR/nvim-linux-x86_64.tar.gz"
+need "$VENDOR/node-v${NODE_VERSION}-linux-x64.tar.xz"
+need "$VENDOR/lua-language-server-linux-x64.tar.gz"
+need "$VENDOR/neocmakelsp"
 
-########################### 1. neovim ################################
-log "neovim (official stable linux-x86_64 build)"
-curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz \
-  | tar xz -C "$OPT/nvim" --strip-components=1
+########################### 1. neovim ###############################
+log "neovim (vendored official static build)"
+tar xz -C "$OPT/nvim" --strip-components=1 -f "$VENDOR/nvim-linux-x86_64.tar.gz"
 
-########################### 2. config ################################
+########################### 2. config ###############################
 log "config"
 tar -C "$SRC" \
     --exclude=./.git --exclude=./packaging \
     -cf - . | tar -xf - -C "$OPT/config"
 
-########################### 3. node-based tools ######################
-log "node runtime + pyright + tailwindcss-language-server + clang-format"
-mkdir -p "$TOOLS/node"
-curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
-  | tar xJ -C "$TOOLS/node" --strip-components=1
-export PATH="$TOOLS/node/bin:$PATH"
-npm install -g --prefix "$TOOLS/npm" pyright @tailwindcss/language-server clang-format
+########################### 3. apt-provided tools ###################
+# clangd, clang-format, gopls come from apt (installed in the Dockerfile).
+# Copy the real binaries into the bundle so the target needs no apt packages.
+log "apt tools -> bundle (clangd, clang-format, gopls)"
+copy_real() {  # copy a binary, resolving symlinks, into $TOOLS/bin
+  src=$(command -v "$1") || { echo "ERROR: $1 not on PATH in build image" >&2; exit 1; }
+  cp -L "$src" "$TOOLS/bin/$2"
+}
+copy_real clangd        clangd
+copy_real clang-format  clang-format
+copy_real gopls         gopls
 
-########################### 4. standalone LSPs #######################
-log "lua-language-server"
+########################### 4. vendored tools #######################
+log "lua-language-server (vendored)"
 mkdir -p "$TOOLS/lua-language-server"
-curl -fsSL "$(gh_latest_asset LuaLS/lua-language-server 'linux-x64\.tar\.gz')" \
-  | tar xz -C "$TOOLS/lua-language-server"
+tar xz -C "$TOOLS/lua-language-server" -f "$VENDOR/lua-language-server-linux-x64.tar.gz"
 ln -sf ../lua-language-server/bin/lua-language-server "$TOOLS/bin/lua-language-server"
 
-log "clangd"
-curl -fsSLo /tmp/clangd.zip "$(gh_latest_asset clangd/clangd 'clangd-linux-[0-9.]+\.zip')"
-unzip -q /tmp/clangd.zip -d /tmp/clangd
-mkdir -p "$TOOLS/clangd"
-cp -a /tmp/clangd/clangd_*/. "$TOOLS/clangd/"
-ln -sf ../clangd/bin/clangd "$TOOLS/bin/clangd"
-
-log "neocmakelsp"
-curl -fsSLo "$TOOLS/bin/neocmakelsp" \
-  "$(gh_latest_asset neocmakelsp/neocmakelsp 'x86_64-unknown-linux-gnu$')"
+log "neocmakelsp (vendored)"
+cp "$VENDOR/neocmakelsp" "$TOOLS/bin/neocmakelsp"
 chmod +x "$TOOLS/bin/neocmakelsp"
 
-log "gopls (static build)"
-GOBIN="$TOOLS/bin" CGO_ENABLED=0 GOFLAGS=-trimpath go install golang.org/x/tools/gopls@latest
+########################### 5. npm tools (pinned) ###################
+log "node runtime (vendored) + pinned pyright + tailwindcss-language-server"
+mkdir -p "$TOOLS/node"
+tar xJ -C "$TOOLS/node" --strip-components=1 -f "$VENDOR/node-v${NODE_VERSION}-linux-x64.tar.xz"
+export PATH="$TOOLS/node/bin:$PATH"
+npm install -g --prefix "$TOOLS/npm" \
+  "pyright@${PYRIGHT_VERSION}" \
+  "@tailwindcss/language-server@${TAILWIND_LS_VERSION}"
 
 # Intentionally NOT bundled -- get from Debian repos on the target instead:
 #   texlab, latexindent  -> apt install texlab texlive-...
 # Dropped entirely: omnisharp, csharpier (no C#), r-languageserver, styler (no R)
 
-########################### 5. plugins + treesitter ##################
+########################### 6. plugins + treesitter #################
 log "restoring plugins from lazy-lock.json + compiling treesitter parsers"
 export HOME=/build/home
 mkdir -p "$HOME/.config"
@@ -80,15 +91,11 @@ NVIM="$OPT/nvim/bin/nvim"
 export PATH="$TOOLS/bin:$TOOLS/npm/bin:$PATH"
 
 "$NVIM" --headless "+Lazy! restore" +qa
-# nvim-treesitter master uses TSUpdateSync, main branch uses TSUpdate
 "$NVIM" --headless "+TSUpdateSync" +qa || "$NVIM" --headless "+TSUpdate" +qa || true
 
 cp -a "$HOME/.local/share/nvim/." "$OPT/data/"
-# Optional: shrink the deb a lot, but breaks `:Lazy` version display/updates
-# (which are useless offline anyway). Uncomment if you want:
-# rm -rf "$OPT"/data/lazy/*/.git
 
-########################### 6. wrapper + user setup ##################
+########################### 7. wrapper + user setup #################
 cat > "$STAGE/usr/bin/nvim" <<'EOF'
 #!/bin/sh
 B=/opt/nvim-bundle
@@ -118,7 +125,7 @@ echo "done. start with: nvim"
 EOF
 chmod 755 "$STAGE/usr/bin/nvim-bundle-setup"
 
-########################### 7. build the .deb ########################
+########################### 8. build the .deb #######################
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: $PKG_NAME
 Version: $VERSION
