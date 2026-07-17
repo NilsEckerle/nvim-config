@@ -1,0 +1,6 @@
+# Simulates a fresh Debian machine with no internet. Intentionally minimal:
+# nothing is installed except a normal user. The .deb must bring everything.
+ARG DEBIAN_IMAGE=debian:bookworm-slim
+FROM ${DEBIAN_IMAGE}
+RUN useradd -m -s /bin/bash dev
+CMD ["/bin/bash"]

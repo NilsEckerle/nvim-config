@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+# Builds the offline nvim-bundle .deb inside Debian (for glibc/parser ABI
+# compatibility with the target machines). Set DEBIAN_IMAGE=debian:bullseye
+# if you need to support older Debians.
+# Build context is the repo root; this file lives in packaging/.
+ARG DEBIAN_IMAGE=debian:bookworm
+
+FROM ${DEBIAN_IMAGE} AS build
+ARG GO_VERSION=1.24.4
+ARG NODE_VERSION=22.14.0
+ARG VERSION=1.0.0
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl git build-essential cmake unzip xz-utils python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Go toolchain (only used to build a static gopls)
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" | tar xz -C /usr/local
+ENV PATH=/usr/local/go/bin:$PATH
+
+COPY . /src
+RUN chmod +x /src/packaging/build-deb.sh \
+ && VERSION=${VERSION} NODE_VERSION=${NODE_VERSION} /src/packaging/build-deb.sh
+
+# Export only the .deb via `docker build --output dist`
+FROM scratch AS artifact
+COPY --from=build /dist/ /
