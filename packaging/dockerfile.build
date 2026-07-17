@@ -3,7 +3,7 @@
 # compatibility with the target machines). Set DEBIAN_IMAGE=debian:bullseye
 # if you need to support older Debians.
 # Build context is the repo root; this file lives in packaging/.
-ARG DEBIAN_IMAGE=debian:bookworm
+ARG DEBIAN_IMAGE=debian:trixie
 
 FROM ${DEBIAN_IMAGE} AS build
 ARG NODE_VERSION=22.14.0
@@ -15,7 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # with no unversioned symlink, so we create /usr/bin/clangd and
 # /usr/bin/clang-format via update-alternatives. gopls ships as plain 'gopls'.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates git build-essential cmake python3 xz-utils \
+        ca-certificates curl git build-essential cmake python3 xz-utils \
         clangd clang-format gopls \
  && rm -rf /var/lib/apt/lists/* \
  && cd_bin=$(ls /usr/bin/clangd-* 2>/dev/null | head -n1) \
@@ -24,6 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && [ -n "$cf_bin" ] && update-alternatives --install /usr/bin/clang-format clang-format "$cf_bin" 100
 
 COPY . /src
+# nvim-treesitter's main branch builds parsers via the `tree-sitter` CLI, not a
+# bare C compiler. Install it globally (node is unpacked by build-deb.sh, but we
+# need the CLI available during the build, so use the vendored node here too).
+# tree-sitter CLI: latest requires glibc 2.39 (present on trixie) and can
+# generate ABI-15 parsers (needed by e.g. the latex grammar).
+RUN tar xJf "$(ls /src/packaging/vendor/node-v*-linux-x64.tar.xz)" -C /usr/local --strip-components=1 \
+ && npm install -g tree-sitter-cli \
+ && tree-sitter --version
+
 RUN chmod +x /src/packaging/build-deb.sh \
  && VERSION=${VERSION} NODE_VERSION=${NODE_VERSION} /src/packaging/build-deb.sh
 

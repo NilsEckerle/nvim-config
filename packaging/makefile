@@ -1,19 +1,33 @@
 # Run from inside packaging/:  make deb && make test
 VERSION      ?= 1.0.0
-DEBIAN_IMAGE ?= debian:bookworm       # oldest Debian you want to support
-TEST_IMAGE   ?= debian:bookworm-slim
+DEBIAN_IMAGE ?= debian:trixie        # oldest Debian you want to support
+TEST_IMAGE   ?= debian:trixie-slim
 DEB           = dist/nvim-bundle_$(VERSION)_amd64.deb
 
 .PHONY: deb test test-shell test-image clean
 
 ## Build the .deb inside a Debian container -> packaging/dist/
 ## Build context is the repo root (..), dockerfile lives here.
+## Requires the docker-buildx plugin (pacman -S docker-buildx).
 deb:
 	DOCKER_BUILDKIT=1 docker build \
 		-f dockerfile.build \
 		--build-arg DEBIAN_IMAGE=$(DEBIAN_IMAGE) \
 		--build-arg VERSION=$(VERSION) \
 		--target artifact --output dist ..
+
+## Same result without the buildx plugin: build the 'build' stage as a normal
+## image, then copy the .deb out of a throwaway container.
+deb-nobuildx:
+	DOCKER_BUILDKIT=1 docker build \
+		-f dockerfile.build \
+		--build-arg DEBIAN_IMAGE=$(DEBIAN_IMAGE) \
+		--build-arg VERSION=$(VERSION) \
+		--target build -t nvim-bundle-build ..
+	mkdir -p dist
+	cid=$$(docker create nvim-bundle-build); \
+	docker cp $$cid:/dist/. dist/; \
+	docker rm $$cid
 
 test-image:
 	docker build -f dockerfile.test \
