@@ -190,12 +190,10 @@ mkdir -p "$OPT/licenses"
 if [ -d "$VENDOR/licenses" ]; then
   cp -a "$VENDOR/licenses/." "$OPT/licenses/"
 fi
-# Pull the LICENSE out of the vendored neovim + node tarballs automatically so
-# they're always present even if you forgot to copy them into vendor/licenses.
+# Pull node's LICENSE out of its vendored tarball automatically. (Neovim's
+# release tarball does NOT ship its own top-level license, so neovim-LICENSE.txt
+# must live in vendor/licenses/ and is copied in by the step above.)
 tmp_lic=$(mktemp -d)
-tar xzf "$VENDOR/nvim-linux-x86_64.tar.gz" -C "$tmp_lic" 2>/dev/null || true
-find "$tmp_lic" -maxdepth 2 -iname 'LICENSE*' -exec cp {} "$OPT/licenses/neovim-LICENSE.txt" \; 2>/dev/null || true
-rm -rf "$tmp_lic"; tmp_lic=$(mktemp -d)
 tar xJf "$VENDOR/node-v${NODE_VERSION}-linux-x64.tar.xz" -C "$tmp_lic" 2>/dev/null || true
 find "$tmp_lic" -maxdepth 2 -iname 'LICENSE*' -exec cp {} "$OPT/licenses/node-LICENSE" \; 2>/dev/null || true
 rm -rf "$tmp_lic"
