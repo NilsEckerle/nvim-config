@@ -39,3 +39,32 @@ end, { desc = "Open current file directory in Nemo" })
 
 map("n", "<leader>ai", "<CMD>CodeCompanionChat<CR>")
 map("v", "<leader>ai", "<CMD>CodeCompanion<CR>")
+
+-- LaTeX / Tectonic (buffer-lokal, nur in Tectonic-Projekten)
+-- b:tectonic_root wird vom BufReadPre-Autocmd in plugins/latex.lua gesetzt
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "tex", "latex" },
+	callback = function(args)
+		if not vim.b[args.buf].tectonic_root then
+			return
+		end
+		local root = vim.b[args.buf].tectonic_root
+
+		map("n", "<localleader>ll", function()
+			vim.cmd("botright split | lcd " .. vim.fn.fnameescape(root) .. " | terminal tectonic -X build")
+		end, { buffer = args.buf, desc = "Tectonic build" })
+
+		map("n", "<localleader>lw", function()
+			vim.cmd("botright split | lcd " .. vim.fn.fnameescape(root) .. " | terminal tectonic -X watch")
+		end, { buffer = args.buf, desc = "Tectonic watch" })
+
+		map("n", "<localleader>lv", function()
+			local pdfs = vim.fn.glob(root .. "/build/*/*.pdf", false, true)
+			if #pdfs == 0 then
+				vim.notify("Kein PDF unter build/ - erst bauen (<localleader>ll)", vim.log.levels.WARN)
+				return
+			end
+			vim.fn.jobstart({ "zathura", pdfs[1] }, { detach = true })
+		end, { buffer = args.buf, desc = "Tectonic view PDF" })
+	end,
+})
